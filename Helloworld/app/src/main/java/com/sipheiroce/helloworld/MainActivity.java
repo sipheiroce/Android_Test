@@ -3,6 +3,7 @@ package com.sipheiroce.helloworld;
 import android.content.Context;
 import android.location.Location;
 import android.location.LocationManager;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v7.app.ActionBarActivity;
 import android.view.Menu;
@@ -10,13 +11,14 @@ import android.view.MenuItem;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import org.apache.http.HttpResponse;
+import org.apache.http.HttpStatus;
+import org.apache.http.StatusLine;
 import org.apache.http.client.HttpClient;
-import org.apache.http.client.ResponseHandler;
 import org.apache.http.client.methods.HttpGet;
-import org.apache.http.impl.client.BasicResponseHandler;
 import org.apache.http.impl.client.DefaultHttpClient;
 
-import java.io.IOException;
+import java.io.ByteArrayOutputStream;
 
 
 public class MainActivity extends ActionBarActivity {
@@ -37,16 +39,8 @@ public class MainActivity extends ActionBarActivity {
         Toast.makeText(getBaseContext(), "你好", Toast.LENGTH_LONG).show();
 
         String url = "http://api.bart.gov/api/etd.aspx?cmd=etd&orig=CIVC&key=MW9S-E7SL-26DU-VV8V";
-        HttpClient Client = new DefaultHttpClient();
-        HttpGet httpget = new HttpGet(url);
-        ResponseHandler<String> responseHandler = new BasicResponseHandler();
-        String SetServerString = "";
-        try {
-            SetServerString = Client.execute(httpget, responseHandler);
-            view.setText(SetServerString);
-        } catch(IOException e) {
-            view.setText("fail:" + e.getMessage());
-        }
+
+        new GetURLOperation().execute(url);
 
 
         //updateView(location);
@@ -93,6 +87,37 @@ public class MainActivity extends ActionBarActivity {
         } else {
             // 如果传入的Location对象为空则清空EditText
             view.setText("no data");
+        }
+    }
+
+    private class GetURLOperation extends AsyncTask<String, Void, String> {
+        protected String doInBackground(String... urls) {
+            HttpClient httpclient = new DefaultHttpClient();
+            String url= urls[0];
+            try {
+                HttpResponse response = httpclient.execute(new HttpGet(url));
+                StatusLine statusLine = response.getStatusLine();
+                if (statusLine.getStatusCode() == HttpStatus.SC_OK) {
+                    ByteArrayOutputStream out = new ByteArrayOutputStream();
+                    response.getEntity().writeTo(out);
+                    String responseString = out.toString();
+                    out.close();
+                    return responseString;
+                    //..more logic
+                } else {
+                    //Closes the connection.
+                    response.getEntity().getContent().close();
+                    return "failed";
+                }
+            } catch(Exception e) {
+                return e.getMessage();
+            }
+        }
+
+        protected void onPostExecute(String result) {
+            // TODO: check this.exception
+            // TODO: do something with the feed
+            view.setText(result);
         }
     }
 
